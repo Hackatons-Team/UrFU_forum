@@ -9,7 +9,7 @@ with open('key.txt', 'r') as f:
     bot = telebot.TeleBot(f.readline())
 
 previousMessage = {}
-accesibleMessages = ["Допустимые", "предыдущие", "значения", "для", "ввода", "текущего", "значения"]
+accesibleMessages = ["Введите вопрос", "Напиши то, что помогло тебе или поможет абитуриенту"]
 
 categories = None
 # category = {
@@ -34,9 +34,6 @@ def get_data(parentID: str, whatFind: str = "category", whereFind: str = "catego
                     result.append(c[1]) # (..., name)
         else:
             result.append("Назад")
-        print()
-        print(result)
-        print()
         return result.copy()
     elif whereFind == "question": # Выбор вопроса
         if parentID in precalculatedQuestions:
@@ -52,7 +49,7 @@ def get_data(parentID: str, whatFind: str = "category", whereFind: str = "catego
 def take_data(data: str, chatID: str = ""):
     # Проверка предыдущего веденного значения
     if previousMessage[chatID] in accesibleMessages:
-        if previousMessage[chatID] == "Значение 1": # Создание вопроса
+        if previousMessage[chatID] == "Введите вопрос": # Создание вопроса
             # Отправление вопроса ИИ
             # Сохранение
             # data = {"ID": max(n)+1,
@@ -63,14 +60,15 @@ def take_data(data: str, chatID: str = ""):
             #        }
             # with open("questions.json", "w") as f:
             #     json.dump(data, f, indent=4)
-            pass
-        elif previousMessage[chatID] == "Значение 2": # Переход в городское общежитие
+            print("Вопрос:", end=" ")
+            bot.send_message(chatID, "Вопрос записан", reply_markup=back)
+        elif previousMessage[chatID] == "Городские": # Переход в городское общежитие
             # Поиск узла с общагой указанного номера
             pass
-        elif previousMessage[chatID] == "Значение 3": # Переход в НВК общежитие
+        elif previousMessage[chatID] == "НВК": # Переход в НВК общежитие
             pass
-        elif previousMessage[chatID] == "Значение 4": # 
-            pass
+        elif previousMessage[chatID] == "Напиши то, что помогло тебе или поможет абитуриенту": # Запись ответа на вопрос
+            bot.send_message(chatID, "Ответ записан", reply_markup=back)
         elif previousMessage[chatID] == "Значение 5": # 
             pass
         elif previousMessage[chatID] == "Значение 6": # 
@@ -162,11 +160,9 @@ for node in questions: # Формирование дерева вопросов
                 precalculatedQuestions[nextId].append([(node["ID"], node["text"])])
 
 def create_menu(id: str):
-    #menu = types.InlineKeyboardMarkup(row_width=1)
     menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
     for smth in create_buttons(id):
         menu.add(smth)
-    #menu.add(*create_buttons(id))
     return menu
 
 back = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -177,7 +173,7 @@ back.add(back_button)
 def start_message(message):
     bot.send_message(message.chat.id, "Вы зашли в \"УРФУ-Форум\" / Хотите задать вопрос или посмотреть имеющиеся?", reply_markup = create_menu('0'))
 
-specialList = ["Не Входящие В Иерархию Значения"]
+specialList = ["Введите вопрос"]
 
 def answer_to_message(messageText, chatID = None):
     idToFind = None
@@ -206,22 +202,32 @@ def handle_callback(call):
 
 @bot.message_handler(content_types=["text"])
 def text_messages(message, isInlinePressed = False):
-    textOfMessage = ""
-    idOfChat = 1
+    
+    textOfMessage = "" # Сообщение от пользователя
+    idOfChat = 1 
     if isInlinePressed:
         textOfMessage = message.data
         idOfChat = message.message.chat.id
     else:
         textOfMessage = message.text
         idOfChat = message.chat.id
+        
+    if not idOfChat in previousMessage:
+        previousMessage[idOfChat] = ""
     
-    print(textOfMessage)
-    previousMessage[idOfChat] = message
+    if previousMessage[idOfChat] in accesibleMessages:
+        take_data(textOfMessage, idOfChat) # Обработка занесения данных
+        previousMessage[idOfChat] = textOfMessage
+        return
+    
+    
+    
     answerText, menu = answer_to_message(textOfMessage, chatID = idOfChat)
     if textOfMessage == "Назад":
         bot.send_message(idOfChat, "Переход назад", reply_markup=create_menu('0'))
+        previousMessage[idOfChat] = "Переход назад"
     else:
         bot.send_message(idOfChat, answerText, reply_markup=menu)
-    
+    previousMessage[idOfChat] = answerText
 
 bot.infinity_polling()
