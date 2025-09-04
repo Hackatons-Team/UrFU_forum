@@ -34,7 +34,9 @@ def get_data(parentID: str, whatFind: str = "category", whereFind: str = "catego
                     result.append(c[1]) # (..., name)
         else:
             result.append("Назад")
+        print()
         print(result)
+        print()
         return result.copy()
     elif whereFind == "question": # Выбор вопроса
         if parentID in precalculatedQuestions:
@@ -77,6 +79,7 @@ def take_data(data: str, chatID: str = ""):
 
 
 def create_buttons(parentID) -> tuple:
+    #return tuple(types.InlineKeyboardButton(text=name, callback_data=str(name)) for name in get_data(parentID, "category"))
     return tuple(types.KeyboardButton(name) for name in get_data(parentID, "category"))
 
 
@@ -159,8 +162,11 @@ for node in questions: # Формирование дерева вопросов
                 precalculatedQuestions[nextId].append([(node["ID"], node["text"])])
 
 def create_menu(id: str):
+    #menu = types.InlineKeyboardMarkup(row_width=1)
     menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    menu.add(*create_buttons(id))
+    for smth in create_buttons(id):
+        menu.add(smth)
+    #menu.add(*create_buttons(id))
     return menu
 
 back = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -190,23 +196,32 @@ def answer_to_message(messageText, chatID = None):
                     if len(node) > 2:
                         answerText = node[2]
 
-                    '''for category2 in precalculatedCategories: 
-                        for node2 in precalculatedCategories[category2]: 
-                            if node2[1] == previousMessage[chatID]: 
-                                answerText = get_data(str(node2[0]), "answer", chatID = chatID, currentID=str(node2[0]))[0]'''
-
                     return (answerText, menu)
     return (answerText, menu)
-    
+
+"""@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    text_messages(call, isInlinePressed = True)"""
+
 
 @bot.message_handler(content_types=["text"])
-def text_messages(message):
-    previousMessage[message.chat.id] = message
-    answerText, menu = answer_to_message(message.text, chatID = message.chat.id)
-    if message.text == "Назад":
-        bot.send_message(message.chat.id, "Переход назад", reply_markup=create_menu('0'))
+def text_messages(message, isInlinePressed = False):
+    textOfMessage = ""
+    idOfChat = 1
+    if isInlinePressed:
+        textOfMessage = message.data
+        idOfChat = message.message.chat.id
     else:
-        bot.send_message(message.chat.id, answerText, reply_markup=menu)
+        textOfMessage = message.text
+        idOfChat = message.chat.id
+    
+    print(textOfMessage)
+    previousMessage[idOfChat] = message
+    answerText, menu = answer_to_message(textOfMessage, chatID = idOfChat)
+    if textOfMessage == "Назад":
+        bot.send_message(idOfChat, "Переход назад", reply_markup=create_menu('0'))
+    else:
+        bot.send_message(idOfChat, answerText, reply_markup=menu)
     
 
 bot.infinity_polling()
