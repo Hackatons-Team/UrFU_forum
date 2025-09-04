@@ -2,6 +2,7 @@
 
 import telebot
 from telebot import types
+import json
 
 
 bot = None
@@ -9,13 +10,48 @@ bot = None
 with open('key.txt', 'r') as f:
     bot = telebot.TeleBot(f.readline())
 
+categories = None
+with open('categories.json', 'r', encoding="UTF-8") as f:
+    categories = json.load(f)
+
+# category = {
+#   ID: int,
+#   name: string,
+#   parentID: int / int[],
+# }
+
+def get_categories(parentID: str) -> list:
+    result = []
+    for c in precalculatedCategories[parentID]: # [ { (, ) }, {...}]
+        result.append(c[1]) # (id, name)
+    return result.copy()
+
+def create_buttons(parentID) -> tuple:
+    return tuple(types.KeyboardButton(name) for name in get_categories(parentID))
+
+precalculatedCategories={}
+precalculatedCategories.keys()
+for node in categories: # Формирование дерева вопросов
+    cnt = 1
+    isList = False
+    if type(node["parentID"]) == type([]):
+        cnt = len(node["parentID"])
+        isList = True
+    while cnt > 0:
+        cnt -= 1
+        nextId = None
+        if isList:
+            nextId = str(node["parentID"][cnt])
+        else:
+            nextId = str(node["parentID"])
+        if not nextId in precalculatedCategories:
+            precalculatedCategories[nextId] = [(node["ID"], node["name"])]
+        else:
+            precalculatedCategories[nextId].append((node["ID"], node["name"]))
+
+
 menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
-name1 = types.KeyboardButton("Название 1") # Сделать прикол с JSON сериализацией из файла
-name2 = types.KeyboardButton("Название 2")
-name3 = types.KeyboardButton("Название 3")
-name4 = types.KeyboardButton("Название 4")
-name5 = types.KeyboardButton("Название 5")
-menu.add(name1, name2, name3, name4, name5)
+menu.add(*create_buttons('0'))
 
 back = types.ReplyKeyboardMarkup(resize_keyboard=True)
 back_button = types.KeyboardButton("Назад")
